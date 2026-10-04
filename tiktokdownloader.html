@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Media Downloader</title>
+<style>
+:root{color-scheme:dark;--bg:#0d0e1f;--panel:#16182f;--line:#2b2e55;--text:#f3f4ff;--mute:#9a9cc4;--pink:#fe2c55;--cyan:#25f4ee;--dl:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 4v11m0 0l-4.5-4.5M12 15l4.5-4.5M5 20h14'/%3E%3C/svg%3E")}
+*{box-sizing:border-box;margin:0}
+body{font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;padding:clamp(24px,6vw,56px) 16px 64px;line-height:1.55}
+main{max-width:660px;margin:0 auto}
+.top{display:flex;align-items:center;gap:14px}
+.mark{width:44px;height:44px;border-radius:12px;display:grid;place-items:center;background:var(--pink);box-shadow:3px 3px 0 var(--cyan);flex:none}
+.mark svg{width:24px;height:24px}
+h1{font-size:clamp(1.6rem,5.5vw,2.2rem);font-weight:800;letter-spacing:-.03em;line-height:1.1}
+.sub{color:var(--mute);margin:14px 0 22px;max-width:52ch}
+.bar{display:flex;gap:12px;flex-wrap:wrap}
+.field{flex:1 1 100%;padding:4px 4px 0}
+input{width:100%;padding:17px 18px;border-radius:12px;border:2px solid var(--text);background:var(--bg);color:var(--text);font-size:1.05rem;box-shadow:4px 4px 0 var(--pink),-4px -4px 0 var(--cyan);outline:none;transition:box-shadow .18s,border-color .18s}
+input:focus-visible{border-color:var(--cyan);box-shadow:7px 7px 0 var(--pink),-7px -7px 0 var(--cyan)}
+input::placeholder{color:#6d70a0}
+.btn{font:inherit;font-weight:600;cursor:pointer;border:1px solid var(--line);background:var(--panel);color:var(--text);padding:12px 18px;border-radius:10px;transition:background .15s,border-color .15s}
+.btn:hover:not(:disabled){border-color:var(--cyan)}
+.btn:focus-visible{outline:2px solid var(--cyan);outline-offset:2px}
+.btn:disabled{opacity:.6;cursor:wait}
+.btn.primary{background:var(--pink);border-color:var(--pink);color:#fff}
+.btn.primary:hover:not(:disabled){background:#e0234a;border-color:#e0234a}
+.btn.sm{padding:8px 10px;font-size:.85rem;width:100%}
+#go{flex:1;padding:14px 22px;font-size:1.02rem}
+.row .btn::before,#go::before{content:"";display:inline-block;width:1.05em;height:1.05em;margin-right:.5em;vertical-align:-.17em;background:currentColor;-webkit-mask:var(--dl) center/contain no-repeat;mask:var(--dl) center/contain no-repeat}
+#msg{min-height:1.5em;margin:22px 0 10px;padding:2px 0 2px 14px;border-left:3px solid transparent;color:var(--mute);display:flex;align-items:center;gap:10px}
+#msg:not(:empty){border-left-color:var(--line)}
+#msg.err{color:#ffb3c1;border-left-color:var(--pink)}
+#msg.busy::before{content:"";width:14px;height:14px;flex:none;border-radius:50%;border:2px solid var(--line);border-top-color:var(--cyan);animation:spin .7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:18px}
+.head{display:flex;gap:16px;align-items:flex-start;margin-bottom:16px}
+.cover{width:92px;height:122px;object-fit:cover;border-radius:8px;background:var(--bg);flex:none;border:1px solid var(--line)}
+.cover[src=""]{display:none}
+.meta h2{font-size:1.05rem;font-weight:700;overflow-wrap:anywhere;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+.mute{color:var(--mute);font-size:.9rem}
+.row{display:flex;gap:8px;flex-wrap:wrap}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:10px;margin:14px 0}
+figure{border:1px solid var(--line);border-radius:10px;padding:6px;background:var(--bg)}
+figure img{width:100%;aspect-ratio:3/4;object-fit:cover;border-radius:6px;display:block;margin-bottom:6px;background:var(--panel)}
+.cfg{margin-top:20px;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px 16px}
+.cfg summary{cursor:pointer;font-weight:600;list-style:none;display:flex;align-items:center;justify-content:space-between}
+.cfg summary::-webkit-details-marker{display:none}
+.cfg summary::after{content:"";width:8px;height:8px;border-right:2px solid var(--mute);border-bottom:2px solid var(--mute);transform:rotate(45deg);transition:transform .2s}
+.cfg[open] summary::after{transform:rotate(225deg)}
+.cfg p{margin-top:10px}
+.cfg input{box-shadow:none;border:1px solid var(--line);margin-top:8px;padding:11px 12px;font-size:1rem}
+.cfg input:focus-visible{box-shadow:none}
+.note{margin-top:32px;padding-top:16px;border-top:1px solid var(--line);font-size:.85rem;color:var(--mute)}
+figure .btn+.btn{margin-top:6px}
+.card>.mute{margin-top:12px}
+.credit{margin-top:14px;font-size:.85rem;color:var(--mute)}
+.credit strong{color:var(--text)}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation-duration:1.5s!important}}
+</style>
+</head>
+<body>
+<main>
+  <header class="top"><span class="mark" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11m0 0l-4.5-4.5M12 15l4.5-4.5M5 20h14"/></svg></span><h1>Media Downloader</h1></header>
+  <p class="sub">Paste a TikTok link to save its videos, audio, or photos.</p>
+
+  <div class="bar">
+    <div class="field"><input id="url" type="url" placeholder="Paste a TikTok link" autocomplete="off" aria-label="Media link"></div>
+    <button class="btn" id="paste" type="button">Paste</button>
+    <button class="btn primary" id="go" type="button">Get media</button>
+  </div>
+
+  <details id="cfg" class="cfg">
+    <summary>Download settings</summary>
+    <p class="mute">Optional download proxy, used when the host blocks saving straight from the browser. Use {url} where the file link goes, or end the address with ?url=</p>
+    <input id="prox" type="url" placeholder="https://your-proxy.example.workers.dev/?url={url}" aria-label="Download proxy URL" autocomplete="off">
+  </details>
+
+  <p id="msg" role="status"></p>
+  <section id="out"></section>
+
+  <p class="note">Only download content you made or have permission to save. Respect creators and TikTok's terms.</p>
+  <p class="credit">This website made by <strong>Zarvions_Z</strong></p>
+</main>
+
+<script>
+const API = "https://www.tikwm.com/api/";   // third-party resolver (change here if it moves)
+const HOST = "https://www.tikwm.com";
+const $ = s => document.querySelector(s);
+const urlIn = $("#url"), goBtn = $("#go"), out = $("#out"), msg = $("#msg");
+
+// Make links absolute and https (an http file on an https page is blocked as mixed content)
+const abs = u => !u ? "" : (/^https?:/i.test(u) ? u : HOST + u).replace(/^http:/i, "https:");
+const wait = ms => new Promise(r => setTimeout(r, ms));
+const prox = $("#prox");
+const store = {
+  get(k){ try { return localStorage.getItem(k) || ""; } catch (e) { return ""; } },
+  set(k, v){ try { localStorage.setItem(k, v); } catch (e) {} }
+};
+prox.value = store.get("dl_prox");
+prox.onchange = () => store.set("dl_prox", prox.value.trim());
+
+function platform(u){
+  if (/^https?:\/\/([\w-]+\.)?tiktok\.com\//i.test(u)) return "tiktok";
+  return "";
+}
+function say(t, err, busy){ msg.textContent = t; msg.className = err ? "err" : busy ? "busy" : ""; }
+function el(tag, cls, txt){ const e = document.createElement(tag); if (cls) e.className = cls; if (txt != null) e.textContent = txt; return e; }
+
+async function resolve(link){
+  for (let tries = 0; tries < 3; tries++){
+    let j;
+    try {
+      const r = await fetch(API + "?hd=1&url=" + encodeURIComponent(link));
+      if (!r.ok) throw new Error("The resolver returned " + r.status + ". Try again in a few seconds.");
+      j = await r.json();
+    } catch (e) {
+      if (e instanceof TypeError) throw new Error("Could not reach the resolver. Check your connection and open this page from a normal browser tab (a sandboxed preview blocks outside requests).");
+      throw e;
+    }
+    if (j.code === 0 && j.data) return j.data;
+    // The free resolver allows about one request per second
+    if (/limit|second/i.test(j.msg || "") && tries < 2){ await wait(1500); continue; }
+    throw new Error(j.msg || "Could not read that link. Check that the post is public.");
+  }
+}
+
+/* ---------- saving files ---------- */
+// Wrap the download proxy address around a file link (empty string when no proxy is set)
+function proxied(u){
+  const p = prox.value.trim();
+  if (!p) return "";
+  return p.includes("{url}") ? p.replace("{url}", encodeURIComponent(u)) : p + encodeURIComponent(u);
+}
+
+async function grab(u){
+  const r = await fetch(u, { referrerPolicy: "no-referrer" });
+  if (!r.ok) throw new Error("HTTP " + r.status);
+  const b = await r.blob();
+  if (!b.size) throw new Error("empty file");
+  return b;
+}
+
+function putFile(blob, name){
+  // Fix the extension when the real type differs (photos are often webp)
+  const ext = { "image/webp": ".webp", "image/png": ".png", "image/jpeg": ".jpg", "video/mp4": ".mp4", "audio/mpeg": ".mp3" }[(blob.type || "").split(";")[0]];
+  if (ext) name = name.replace(/\.\w+$/, ext);
+  const a = el("a"); a.href = URL.createObjectURL(blob); a.download = name;
+  document.body.append(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 60000);   // long videos need time to start writing
+}
+
+// Direct fetch first, then the optional proxy. Returns true once a file was handed to the browser.
+async function fetchAndSave(url, name){
+  for (const u of [url, proxied(url)]){
+    if (!u) continue;
+    try { putFile(await grab(u), name); return true; } catch (e) {}
+  }
+  return false;
+}
+
+// If the host blocks saving from a web page (CORS), open the file itself in a new tab so it can be saved from there.
+async function save(url, name, btn){
+  if (btn.dataset.open){ window.open(url, "_blank"); return; }   // second tap: opened inside the click, so popups are allowed
+  const label = btn.textContent;
+  btn.disabled = true; btn.textContent = "Downloading..."; say("Downloading...", false, true);
+  const ok = await fetchAndSave(url, name);
+  btn.disabled = false; btn.textContent = label;
+  if (ok) return say("Saved " + name);
+  const w = window.open(url, "_blank");
+  if (w){
+    w.opener = null;
+    say("This host blocks direct saving, so the file opened in a new tab. Save it from there (right-click or long-press), or add a download proxy in Settings.", true);
+  } else {
+    btn.dataset.open = "1"; btn.textContent = "Open file";
+    say("This host blocks direct saving and the browser blocked the new tab. Tap the button again to open the file.", true);
+  }
+}
+
+/* ---------- save to gallery (mobile share sheet) ---------- */
+const MOBILE = matchMedia("(pointer:coarse)").matches && typeof navigator.canShare === "function";
+const MIME = { jpg: "image/jpeg", jpeg: "image/jpeg", png: "image/png", webp: "image/webp", mp4: "video/mp4", mp3: "audio/mpeg" };
+function fixName(blob, name){
+  const ext = { "image/webp": ".webp", "image/png": ".png", "image/jpeg": ".jpg", "video/mp4": ".mp4", "audio/mpeg": ".mp3" }[(blob.type || "").split(";")[0]];
+  return ext ? name.replace(/\.\w+$/, ext) : name;
+}
+
+async function toGallery(items, btn){
+  const label = btn.dataset.label || (btn.dataset.label = btn.textContent);
+  let files = btn._files; btn._files = null;
+  if (files){
+    btn.textContent = label;
+  } else {
+    btn.disabled = true; btn.textContent = "Preparing..."; say("Preparing for your gallery...", false, true);
+    files = [];
+    for (const it of items){
+      let blob = null;
+      for (const u of [it.url, proxied(it.url)]){ if (!u) continue; try { blob = await grab(u); break; } catch (e) {} }
+      if (!blob){
+        btn.disabled = false; btn.textContent = label;
+        return say("This host blocks the download, so it can't go to your gallery. Try the normal Save button.", true);
+      }
+      const name = fixName(blob, it.name);
+      files.push(new File([blob], name, { type: MIME[name.split(".").pop().toLowerCase()] || blob.type }));
+    }
+    btn.disabled = false; btn.textContent = label;
+  }
+  if (!navigator.canShare({ files })) return say("This browser can't send these files to the gallery. Use the normal Save button.", true);
+  try {
+    await navigator.share({ files });
+    say("Choose Save Image / Save Video (iPhone) or Gallery / Photos (Android) in the menu.");
+  } catch (e) {
+    if (e.name === "AbortError") return say("");
+    if (e.name === "NotAllowedError"){   // too long since the tap: keep the files ready for one more tap
+      btn._files = files; btn.textContent = "Tap again to open gallery";
+      return say("Files are ready. Tap the button once more.");
+    }
+    say("Could not open the share menu. Use the normal Save button.", true);
+  }
+}
+
+function gBtn(label, items, cls){
+  const b = el("button", "btn " + (cls || ""), label); b.type = "button";
+  b.onclick = () => toGallery(items, b);
+  return b;
+}
+
+function dlBtn(label, url, name, cls){
+  const b = el("button", "btn " + (cls || ""), label); b.type = "button";
+  b.onclick = () => save(abs(url), name, b);
+  return b;
+}
+
+function render(d){
+  out.replaceChildren();
+  const id = d.id || Date.now();
+  const card = el("div", "card");
+
+  const head = el("div", "head");
+  const cover = el("img", "cover"); cover.src = abs(d.cover || (d.images && d.images[0])); cover.alt = ""; cover.referrerPolicy = "no-referrer";
+  const meta = el("div", "meta");
+  const by = [d.author && d.author.unique_id ? "@" + d.author.unique_id : "", d.duration ? d.duration + "s" : ""].filter(Boolean).join(" - ");
+  meta.append(el("h2", "", d.title || "Untitled post"), el("p", "mute", by));
+  head.append(cover, meta);
+  card.append(head);
+
+  const photos = (Array.isArray(d.images) ? d.images : []).map(abs);
+  const row = el("div", "row");
+
+  if (photos.length){
+    const grid = el("div", "grid");
+    photos.forEach((u, i) => {
+      const f = el("figure"), im = el("img");
+      im.src = u; im.alt = "Photo " + (i + 1); im.loading = "lazy"; im.referrerPolicy = "no-referrer";
+      f.append(im, dlBtn("Save photo " + (i + 1), u, `tiktok_${id}_${i + 1}.jpg`, "sm"));
+      if (MOBILE) f.append(gBtn("To gallery", [{ url: u, name: `tiktok_${id}_${i + 1}.jpg` }], "sm"));
+      grid.append(f);
+    });
+    const label = "Save all " + photos.length + " photos";
+    const all = el("button", "btn primary", label); all.type = "button";
+    all.onclick = async () => {
+      all.disabled = true; let n = 0;
+      for (let i = 0; i < photos.length; i++){
+        all.textContent = "Saving " + (i + 1) + "/" + photos.length + "...";
+        if (!(await fetchAndSave(photos[i], `tiktok_${id}_${i + 1}.jpg`))) break;
+        n++; await wait(400);
+      }
+      all.textContent = label; all.disabled = false;
+      if (n === photos.length) say("Saved all " + n + " photos.");
+      else say("This host blocks saving many files at once. Use the Save photo button under each image.", true);
+    };
+    row.append(all);
+    if (MOBILE) row.append(gBtn("Save all " + photos.length + " to gallery", photos.map((u, i) => ({ url: u, name: `tiktok_${id}_${i + 1}.jpg` }))));
+    card.append(grid);
+  } else {
+    if (d.hdplay) row.append(dlBtn("Video HD", d.hdplay, `tiktok_${id}_hd.mp4`, "primary"));
+    if (d.play) row.append(dlBtn("Video", d.play, `tiktok_${id}.mp4`, d.hdplay ? "" : "primary"));
+    if (d.wmplay) row.append(dlBtn("Video with watermark", d.wmplay, `tiktok_${id}_wm.mp4`));
+    if (MOBILE && (d.hdplay || d.play)) row.append(gBtn("Video to gallery", [{ url: abs(d.hdplay || d.play), name: `tiktok_${id}.mp4` }]));
+  }
+  if (d.music) row.append(dlBtn("Audio", d.music, `tiktok_${id}_audio.mp3`));
+  if (d.cover) row.append(dlBtn("Cover image", d.cover, `tiktok_${id}_cover.jpg`));
+
+  card.append(row);
+  if (MOBILE) card.append(el("p", "mute", "To gallery opens your share menu. Choose Save Image or Save Video on iPhone, or Gallery / Photos on Android."));
+  out.append(card);
+}
+
+async function run(){
+  const link = urlIn.value.trim();
+  out.replaceChildren();
+  const kind = platform(link);
+  if (!kind) return say("Enter a full TikTok link.", true);
+  goBtn.disabled = true; say("Reading the link...", false, true);
+  try {
+    render(await resolve(link));
+    say("Ready. Choose what to save.");
+  } catch (e) {
+    say(e.message || "Something went wrong. Try again.", true);
+  }
+  goBtn.disabled = false;
+}
+
+goBtn.onclick = run;
+urlIn.addEventListener("keydown", e => { if (e.key === "Enter") run(); });
+$("#paste").onclick = async () => {
+  try { urlIn.value = (await navigator.clipboard.readText()).trim(); run(); }
+  catch (e) { say("Clipboard access was blocked. Paste the link into the box instead.", true); }
+};
+</script>
+</body>
+</html>
